@@ -17,12 +17,20 @@ class SyncedLogger:
     def __init__(self):
         self.start_time = time.time()
         
-    def print_with_timestamp(self, message):
+    def info(self, message):
         elapsed_time = time.strftime("%H:%M:%S", time.gmtime(time.time() - self.start_time))
         print(f"[{elapsed_time}] {message}")
+        
+    def warning(self, message):
+        elapsed_time = time.strftime("%H:%M:%S", time.gmtime(time.time() - self.start_time))
+        print(f"[{elapsed_time}] WARNING: {message}")
+        
+    def error(self, message):
+        elapsed_time = time.strftime("%H:%M:%S", time.gmtime(time.time() - self.start_time))
+        print(f"[{elapsed_time}] ERROR: {message}")
         
     def reset_start_time(self):
         self.start_time = time.time()
         
 logger = SyncedLogger()
-logger.print_with_timestamp("Logger Initialised...")
+logger.info("Logger Initialised...")
