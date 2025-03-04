@@ -1,7 +1,7 @@
 import pandas as pd
-import numpy as np
 
-def remove_outliers(X, y, window_size=100, threshold=3.0):
+
+def remove_outliers(X, y, window_size=20, threshold=3):
     """
     Remove local outliers from time series data using sliding window Z-score analysis.
     
@@ -14,42 +14,27 @@ def remove_outliers(X, y, window_size=100, threshold=3.0):
     Returns:
     pd.DataFrame, pd.Series: Cleaned X and y with outliers removed
     """
-
-    # Create outlier mask
-    outlier_mask = pd.Series(False, index=X.index)
-    half_window = window_size // 2
-
-    for col in X.columns:
-        # Convert to numpy for efficient window operations
-        values = X[col].values
-        n = len(values)
-        z_scores = np.zeros(n)
-        
-        for i in range(n):
-            # Define window bounds
-            start = max(0, i - half_window)
-            end = min(n, i + half_window + 1)
-            window = values[start:end]
-            
-            # Skip if window is too small
-            if len(window) < 3:
-                z_scores[i] = 0
-                continue
-                
-            # Calculate robust statistics
-            median = np.median(window)
-            mad = np.median(np.abs(window - median))
-            if mad == 0:
-                z_scores[i] = 0
-            else:
-                # Modified Z-score using MAD
-                z_scores[i] = 0.6745 * (values[i] - median) / mad
-
-        # Update outlier mask
-        outlier_mask |= np.abs(z_scores) > threshold
-
-    # Filter outliers and maintain temporal order
-    clean_X = X.loc[~outlier_mask].copy()
-    clean_y = y.loc[~outlier_mask].copy()
+    X = X.copy()
+    y = y.copy()
+    mask = pd.Series(False, index=X.index)
     
-    return clean_X, clean_y
+    for col in X.columns:
+        # Calculate rolling statistics for previous window (excl. current row)
+        rolling_mean = X[col].rolling(
+            window=window_size,
+            min_periods=window_size
+        ).mean().shift(1)
+        
+        rolling_std = X[col].rolling(
+            window=window_size,
+            min_periods=window_size
+        ).std(ddof=0).shift(1)  # Population standard deviation
+        
+        # Compute Z-scores and identify outliers
+        z_scores = (X[col] - rolling_mean) / rolling_std
+        mask_col = z_scores.abs() > threshold
+        mask |= mask_col.fillna(False)
+    
+    # Filter out outliers while preserving original indices
+    valid_indices = mask[~mask].index
+    return X.loc[valid_indices], y.loc[valid_indices]
