@@ -28,7 +28,7 @@ def load_pkl_with_alignment(pkl_path):
     X = pd.DataFrame(index=base_index)
     y = pd.Series(labels, index=base_index, name='label')
     
-    logger.print_with_timestamp("Data Loaded...")
+    logger.info("Data Loaded...")
 
     # Process each signal source
     for device, device_signals in signals.items():
@@ -44,6 +44,6 @@ def load_pkl_with_alignment(pkl_path):
                 col_name = f'{device}_{signal_type}_{col_idx}'
                 X[col_name] = aligned_values
                 
-    logger.print_with_timestamp("Signals Processed...")
+    logger.info("Signals Processed...")
     
     return X, y
