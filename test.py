@@ -3,33 +3,27 @@ import time
 
 from utils.synced_logger import logger
 
-from preprocessing.load_pkl_with_alignment import loadPklWithAlignment
+from preprocessing.load_pkl_with_alignment import load_pkl_with_alignment
 from preprocessing.normalise import normalise
 from preprocessing.remove_outliers import remove_outliers
-from preprocessing.balance_classes import underSample
-from preprocessing.align_signal import align_signal
+from preprocessing.balance_classes import balance_classes
 
-from feature_generation.DWT import add_dwt_features
+# from feature_generation.DWT import add_dwt_features
     
     
 def test(subject):
     # Load data
-    X, y = loadPklWithAlignment(f'.data/{subject}.pkl')
+    X, y = load_pkl_with_alignment(f'.data/{subject}.pkl')
     
     # Clean
-    X, y = remove_outliers(
-        X, 
-        y,
-        threshold=3,
-        window_size=100
-    )
+    X, y = remove_outliers(X, y)
     
-    logger.print_with_timestamp("Outliers Removed...", start_time)   
+    logger.print_with_timestamp("Outliers Removed...")   
         
     # Balance classes
-    X, y = underSample(X, y)
+    X, y = balance_classes(X, y)
     
-    logger.print_with_timestamp("Classes Balanced...", start_time)
+    logger.print_with_timestamp("Classes Balanced...")
     
     # TODO: Add DWT features
     
@@ -37,17 +31,18 @@ def test(subject):
     # TODO: Organise folds first, calculate min/max from train and apply to train/test
     X = normalise(X)
     
-    logger.print_with_timestamp("Data Normalised...", start_time)
+    logger.print_with_timestamp("Data Normalised...")
     
     # Save
     out = pd.concat([X, y], axis=1)
     out.sort_index(inplace=True)
     out.to_csv(f'{subject}.csv', index=False)
     
-    logger.print_with_timestamp("Output Saved...", start_time)
+    logger.print_with_timestamp("Output Saved...")
 
 
 if __name__ == '__main__':
     start_time = time.time()
-    logger.print_with_timestamp("Starting...", start_time)
+    logger.print_with_timestamp("Starting...")
     test('S2')
+    logger.print_with_timestamp("Done...")

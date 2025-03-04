@@ -8,7 +8,7 @@ from utils.synced_logger import logger
 from preprocessing.align_signal import align_signal
 
 
-def loadPklWithAlignment(pkl_path):
+def load_pkl_with_alignment(pkl_path):
     # Load data
     with open(pkl_path, 'rb') as f:
         data = pickle.load(f, encoding='latin1')
