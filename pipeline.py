@@ -6,8 +6,10 @@ from imblearn.under_sampling import RandomUnderSampler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 from sklearn.model_selection import KFold
+from logging_config import logger
 
-def load_subject_timeframe(filepath, window_size = 1):
+def load_subject_timeframe(filepath, window_size_in_seconds = 1, drop_non_study_labels = False, remove_outliers = True):
+    logger.info(f'Loading subject timeframe from {filepath}')
     with open(filepath, 'rb') as file:
         subject = pickle.load(file, encoding='latin1')
         labels = pd.Series(subject['label'])
@@ -36,28 +38,33 @@ def load_subject_timeframe(filepath, window_size = 1):
                 df.columns = [f'{signal_device}_{signal_name}']
             else:
                 df.columns = [f'{signal_device}_{signal_name}_{axis}' for axis in ['x', 'y', 'z']]
-            df = df.groupby(df.index // sampling_freq * window_size).agg(['mean', 'std'])
+            if remove_outliers:
+                z_scores = (df - df.mean()) / df.std()
+                df = df[(z_scores.abs() < 3).all(axis=1)]
+            df = df.groupby(df.index // sampling_freq * window_size_in_seconds).agg(['mean', 'std'])
             df.columns = [f'{col[0]}_{col[1]}' for col in df.columns]
             dfs.append(df)
         
     label_func = lambda group: group.mode()[0] if not group.mode().empty else group.unique()[0]
     
     X = pd.concat(dfs, axis=1)
-    y = labels.groupby(labels.index // 700 * window_size).apply(label_func)
+    y = labels.groupby(labels.index // 700 * window_size_in_seconds).apply(label_func)
 
-    # discard = y.isin([5, 6, 7])
-
-    # X = X[~discard]
-    # y = y[~discard]
+    if drop_non_study_labels:
+        discard = y.isin([0, 5, 6, 7])
+        X = X[~discard]
+        y = y[~discard]
 
     return X, y
 
 def balance_classes(X, y):
+    logger.info('Balancing classes')
     rus = RandomUnderSampler(random_state=42)
     X_resampled, y_resampled = rus.fit_resample(X, y)
     return X_resampled, y_resampled
 
 def generate_folds(data_dir, k, random_state):
+    logger.info(f'Generating {k} folds with random state {random_state}')
     files = [file for file in os.listdir(data_dir) if file.endswith('.pkl')]
     kf = KFold(n_splits=k, shuffle=True, random_state=random_state)
     folds = []
@@ -66,7 +73,6 @@ def generate_folds(data_dir, k, random_state):
         test_files = [files[i] for i in test_index]
         folds.append((train_files, test_files))
     return folds
-
 
 def label_correlation_analysis(subject_id, X, y):
     label_map = {
@@ -100,7 +106,7 @@ def label_correlation_analysis(subject_id, X, y):
 
     return fig
 
-def timeframe_analysis(subject_id, X, y, feature):
+def timeframe_analysis(subject_id, X, y, feature, scatter=False):
     label_map = {
         '0': 'Transient',
         '1': 'Baseline',
@@ -119,7 +125,10 @@ def timeframe_analysis(subject_id, X, y, feature):
     unique_labels = y.unique()
     for label in unique_labels:
         section = X[y == label]
-        ax.plot(section.index, section[feature], label=label_map[str(label)], drawstyle='steps-post')
+        if scatter:
+            ax.scatter(section.index, section[feature], label=label_map[str(label)])
+        else:
+            ax.plot(section.index, section[feature], label=label_map[str(label)], drawstyle='steps-post')
 
     ax.set_title(f'{subject_id} - {feature} Over Time')
     ax.set_xlabel('Time')
@@ -152,20 +161,58 @@ def run_rf(X_train, y_train, X_test, y_test):
 def analyze_all_subjects(data_dir, subject_files, output_dir):
     for subject_file in subject_files:
         subject_id = subject_file.split('.')[0]
-        X, y = load_subject_timeframe(os.path.join(data_dir, subject_file))
+        logger.info(f'Analyzing subject {subject_id}')
+        subject_output_dir = f'{output_dir}/{subject_id}'
+        os.makedirs(subject_output_dir, exist_ok=True)
+        os.makedirs(f'{subject_output_dir}/timeframe', exist_ok=True)
+        os.makedirs(f'{subject_output_dir}/balanced_scatter', exist_ok=True)
+        X, y = load_subject_timeframe(os.path.join(data_dir, subject_file), remove_outliers=False)
         fig = label_correlation_analysis(subject_id, X, y)
-        fig.savefig(f'{output_dir}/{subject_id}_label_correlation_analysis.png')
+        fig.savefig(f'{subject_output_dir}/{subject_id}_label_correlation_analysis.png')
 
         for feature in X.columns:
             fig = timeframe_analysis(subject_id, X, y, feature)
-            fig.savefig(f'{output_dir}/{subject_id}_{feature}.png')
+            fig.savefig(f'{subject_output_dir}/timeframe/{subject_id}_{feature}.png')
+
+        X, y = balance_classes(X, y)
+        for feature in X.columns:
+            fig = timeframe_analysis(subject_id, X, y, feature, scatter=True)
+            fig.savefig(f'{subject_output_dir}/balanced_scatter/{subject_id}_{feature}.png')
+
+def run_fold(data_dir, train_files, test_files):
+    X_train, y_train = pd.DataFrame(), pd.Series()
+    for train_file in train_files:
+        X, y = load_subject_timeframe(os.path.join(data_dir, train_file))
+        X_train = pd.concat([X_train, X])
+        y_train = pd.concat([y_train, y])
+
+    X_test, y_test = pd.DataFrame(), pd.Series()
+    for test_file in test_files:
+        X, y = load_subject_timeframe(os.path.join(data_dir, test_file))
+        X_test = pd.concat([X_test, X])
+        y_test = pd.concat([y_test, y])
+
+    X_train, y_train = balance_classes(X_train, y_train)
+    report = run_rf(X_train, y_train, X_test, y_test)
+    return report
+
+def run_folds(data_dir, folds):
+    reports = []
+    for i, (train_files, test_files) in enumerate(folds):
+        logger.info(f'Running fold {i + 1}...')
+        report = run_fold(data_dir, train_files, test_files)
+        reports.append(report)
+    return reports
 
 if __name__ == '__main__':
-    # # Test
-    # X, y = load_subject_timeframe('.data/S2.pkl')
-    # for feature in X.columns:
-    #     fig = timeframe_analysis('S2', X, y, feature)
-    #     fig.savefig(f'test/S2_{feature}.png')
-    os.makedirs('.analysis', exist_ok=True)
-    subject_files = [file for file in os.listdir('.data') if file.endswith('.pkl')]
-    analyze_all_subjects('.data', subject_files, '.analysis')
+    # os.makedirs('.analysis', exist_ok=True)
+    # subject_files = [file for file in os.listdir('.data') if file.endswith('.pkl')]
+    # analyze_all_subjects('.data', subject_files, '.analysis')
+    os.makedirs('.out', exist_ok=True)
+    logger.info('Running all folds')
+    folds = generate_folds('.data', 5, 42)
+    reports = run_folds('.data', folds)
+    for i, report in enumerate(reports):
+        with open(f'.out/fold_{i + 1}_report.txt', 'w') as file:
+            file.write(report)
+    logger.info('All folds completed')
