@@ -1,6 +1,9 @@
 numpy
 pandas
 scikit-learn
+sklearn-evaluation
 matplotlib
 imblearn
 PyWavelets
+keras
+tensorflow

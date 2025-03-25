@@ -5,6 +5,11 @@
 # MacOS
 **/.DS_Store
 
+.data/
+.logs/
+.out/
+.analysis/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
