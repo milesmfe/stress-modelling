@@ -6,6 +6,7 @@ import os
 import pickle
 import pandas as pd
 from datetime import datetime
+from imblearn.under_sampling import RandomUnderSampler
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
 from sklearn.metrics import classification_report
@@ -51,6 +52,12 @@ def run_cross_validation(data, n_splits, results_dir, save_datasets, model_name,
         if use_feature_selection:
             logger.info("Performing feature selection...")
             X_train, X_test = select_features(X_train, y_train, X_test)
+
+        # Balance classes with RUS
+        logger.info("Balancing classes using Random Under Sampling...")
+        rus = RandomUnderSampler(random_state=RANDOM_STATE)
+        X_train, y_train = rus.fit_resample(X_train, y_train)
+        logger.info(f"Training on {len(X_train)} samples, testing on {len(X_test)} samples.")
 
         logger.info(f"Initializing model: {model_name}")
         clf = get_model(model_name)

@@ -9,6 +9,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="WESAD Pipeline CLI")
     parser.add_argument("--data_dir", type=str, required=True, help="Directory containing .pkl files.")
     parser.add_argument("--results_dir", type=str, default=f'results_{datetime.now().strftime("%Y%m%d_%H%M%S")}', help="Directory to save results.")
+    parser.add_argument("--use_cache", type=str, help="Path to cache file for preloaded data.")
     parser.add_argument("--drop_non_study", action="store_true", help="Drop labels 0, 5, 6, 7.")
     parser.add_argument("--shorten_non_study", action="store_true", help="Shorten non-study labels to 0.")
     parser.add_argument("--n_splits", type=int, default=5, help="Number of CV folds.")

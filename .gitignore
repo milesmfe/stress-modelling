@@ -9,7 +9,7 @@
 data/
 .logs/
 .analysis/
-results_*/
+**/*results*/
 .old/
 
 # Byte-compiled / optimized / DLL files
