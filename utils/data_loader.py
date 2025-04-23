@@ -8,10 +8,11 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Tuple
 from sklearn.impute import SimpleImputer
+from concurrent.futures import ThreadPoolExecutor
 from features.feature_extractor import extract_features
 from utils.logger import logger
 
-# Define signal-specific frequencies and window sizes in seconds
+# Signal configuration: sampling frequencies and window lengths (in seconds)
 SIGNAL_CONFIG = {
     ('chest', 'ECG'): {'fs': 700, 'window_s': 1.0},
     ('chest', 'EMG'): {'fs': 700, 'window_s': 0.5},
@@ -25,44 +26,82 @@ SIGNAL_CONFIG = {
     ('wrist', 'TEMP'): {'fs': 4, 'window_s': 5.0},
 }
 
-def window_signal(signal: np.ndarray, fs: int, window_s: float) -> list:
-    logger.debug(f"Windowing signal with fs={fs}, window_s={window_s}")
-    window_len = int(fs * window_s)
-    return [signal[i:i + window_len] for i in range(0, len(signal) - window_len, window_len)]
+def generate_time_windows(total_duration_s: float, step_s: float):
+    return [(i * step_s, (i + 1) * step_s) for i in range(int(total_duration_s // step_s))]
+
+def extract_window_slice(signal_data: np.ndarray, fs: int, start_s: float, end_s: float) -> np.ndarray:
+    start_idx = int(start_s * fs)
+    end_idx = int(end_s * fs)
+    if end_idx > len(signal_data):
+        return None
+    return signal_data[start_idx:end_idx]
+
+def get_window_label(start_idx: int, end_idx: int, label_series: pd.Series) -> int:
+    segment = label_series.iloc[start_idx:end_idx]
+    return segment.mode().iloc[0] if not segment.empty else 0
+
+
+def process_time_window(start_s, end_s, data, labels, step_s):
+    feature_row = {}
+    window_valid = True
+
+    for (device, signal), conf in SIGNAL_CONFIG.items():
+        if device not in data or signal not in data[device]:
+            continue
+
+        fs = conf['fs']
+        signal_data = np.array(data[device][signal])
+        start_idx = int(start_s * fs)
+        end_idx = int(end_s * fs)
+        if end_idx > len(signal_data):
+            window_valid = False
+            break
+
+        win = signal_data[start_idx:end_idx]
+        win = win if win.ndim > 1 else win.reshape(-1, 1)
+
+        for dim in range(win.shape[1]):
+            feats = extract_features(win[:, dim], f"{device}_{signal}_dim{dim}", fs)
+            feature_row.update(feats)
+
+    if not window_valid:
+        return None, None
+
+    label_start_idx = int(start_s * 700)
+    label_end_idx = int(end_s * 700)
+    segment = labels[label_start_idx:label_end_idx]
+    label = int(pd.Series(segment).mode().iloc[0]) if len(segment) > 0 else 0
+
+    return feature_row, label
 
 def load_subject_timeframe(filepath: str, drop_non_study: bool, imputer_strategy: str, shorten_non_study: bool) -> Tuple[pd.DataFrame, pd.Series]:
     logger.info(f"Loading subject data from {filepath}")
     with open(filepath, 'rb') as file:
         subject = pickle.load(file, encoding='latin1')
 
-    labels = pd.Series(subject['label'])
+    labels = np.array(subject['label'])  # Use NumPy for fast slicing
     data = subject['signal']
+
+    max_duration_s = len(labels) / 700.0
+    step_s = 0.5
+    time_windows = [(i * step_s, (i + 1) * step_s) for i in range(int(max_duration_s // step_s))]
 
     all_features = []
     all_labels = []
 
-    for signal_key, conf in SIGNAL_CONFIG.items():
-        device, signal = signal_key
-        if device not in data or signal not in data[device]:
-            logger.warning(f"Signal {signal} from device {device} not found in data.")
+    logger.info("Processing all windows in parallel...")
+
+    with ThreadPoolExecutor() as executor:
+        results = list(executor.map(
+            lambda t: process_time_window(t[0], t[1], data, labels, step_s),
+            time_windows
+        ))
+
+    for feats, label in results:
+        if feats is None:
             continue
-
-        logger.debug(f"Processing signal {signal} from device {device}")
-        signal_data = np.array(data[device][signal])
-        fs, window_s = conf['fs'], conf['window_s']
-        windows = window_signal(signal_data, fs, window_s)
-        label_windows = labels.groupby(labels.index // int(fs * window_s)).apply(lambda x: x.mode()[0])
-        label_windows = label_windows.iloc[:len(windows)]
-
-        for i, win in enumerate(windows):
-            features = {}
-            win = win if win.ndim > 1 else win.reshape(-1, 1)
-            for dim in range(win.shape[1]):
-                dim_features = extract_features(win[:, dim], f"{device}_{signal}_dim{dim}", fs)
-                features.update(dim_features)
-
-            all_features.append(features)
-            all_labels.append(label_windows.iloc[i])
+        all_features.append(feats)
+        all_labels.append(label)
 
     X = pd.DataFrame(all_features)
     y = pd.Series(all_labels)
@@ -84,7 +123,7 @@ def load_subject_timeframe(filepath: str, drop_non_study: bool, imputer_strategy
     logger.info(f"Finished processing subject data from {filepath}")
     return X, y
 
-def preload_data(data_dir: str, drop_non_study: bool, imputer_strategy: str, shorten_non_study) -> Dict[str, Tuple[pd.DataFrame, pd.Series]]:
+def preload_data(data_dir: str, drop_non_study: bool, imputer_strategy: str, shorten_non_study: bool) -> Dict[str, Tuple[pd.DataFrame, pd.Series]]:
     logger.info(f"Preloading data from directory: {data_dir}")
     files = [f for f in os.listdir(data_dir) if f.endswith('.pkl')]
     data = {}
@@ -95,6 +134,5 @@ def preload_data(data_dir: str, drop_non_study: bool, imputer_strategy: str, sho
             data[f] = (X, y)
         except Exception as e:
             logger.warning(f"Skipping {f} due to an error: {e}")
-            
     logger.info("Finished preloading data")
     return data
