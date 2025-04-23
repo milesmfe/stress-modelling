@@ -4,11 +4,13 @@
 
 # MacOS
 **/.DS_Store
+.vscode/
 
-.data/
+data/
 .logs/
-.out/
 .analysis/
+results_*/
+.old/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
