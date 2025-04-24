@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from sklearn.preprocessing import StandardScaler
 import pickle
 import pandas as pd
 
@@ -118,7 +119,8 @@ class TimeframeGrapherApp:
 
     def _load_subject_data(self, subject):
         X, y = self.data_dict[subject]
-        self.loaded_data = X
+        scalar = StandardScaler()
+        self.loaded_data = pd.DataFrame(scalar.fit_transform(X), columns=X.columns)
         self.labels = y
 
         self.feature_listbox.delete(0, tk.END)
