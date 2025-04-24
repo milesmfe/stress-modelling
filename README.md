@@ -284,7 +284,7 @@ Contributions to improve the WESAD pipeline are welcome! Please follow these ste
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GNUv3 License - see the LICENSE file for details.
 
 ## Acknowledgments
 
