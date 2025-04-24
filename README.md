@@ -1,6 +1,6 @@
 # WESAD Stress Analysis and Modeling
 
-![Project Banner](https://via.placeholder.com/800x200?text=WESAD+Stress+Analysis)
+![Project Banner](visualization_example.png)
 
 ## Overview
 
@@ -88,34 +88,37 @@ python main.py \
 
 ### Available Arguments
 
-| Argument | Description | Default |
-|----------|-------------|---------|
-| `--data_dir` | Directory containing WESAD .pkl files | Required |
-| `--results_dir` | Directory to save results | `results_YYYYMMDD_HHMMSS` |
-| `--use_cache` | Path to cache file for preloaded data | None |
-| `--drop_non_study` | Drop labels 0, 5, 6, 7 | False |
-| `--shorten_non_study` | Shorten non-study labels to 0 | False |
-| `--n_splits` | Number of CV folds | 5 |
-| `--save_datasets` | Save train/test datasets per fold | False |
-| `--model_name` | Model name in registry | RandomForest |
-| `--feature_selection` | Enable feature selection | False |
-| `--binary_classification` | Use binary classification | False |
-| `--imputer` | Imputation strategy | mean |
+| Argument                    | Description                           | Default                     |
+| --------------------------- | ------------------------------------- | --------------------------- |
+| `--data_dir`              | Directory containing WESAD .pkl files | Required                    |
+| `--results_dir`           | Directory to save results             | `results_YYYYMMDD_HHMMSS` |
+| `--use_cache`             | Path to cache file for preloaded data | None                        |
+| `--drop_non_study`        | Drop labels 0, 5, 6, 7                | False                       |
+| `--shorten_non_study`     | Shorten non-study labels to 0         | False                       |
+| `--n_splits`              | Number of CV folds                    | 5                           |
+| `--save_datasets`         | Save train/test datasets per fold     | False                       |
+| `--model_name`            | Model name in registry                | RandomForest                |
+| `--feature_selection`     | Enable feature selection              | False                       |
+| `--binary_classification` | Use binary classification             | False                       |
+| `--imputer`               | Imputation strategy                   | mean                        |
 
 ## Feature Extraction
 
 The pipeline extracts a comprehensive set of features from physiological signals:
 
 ### Time Domain Features
+
 - Basic statistics (mean, std, max, min, skewness, kurtosis)
 - Peak analysis (number of peaks, average peak distance)
 - For ECG signals: HRV metrics (RMSSD, SDNN, pNN50)
 
 ### Frequency Domain Features
+
 - Band powers (low, mid, high frequency)
 - FFT mean and entropy
 
 ### Complexity Features
+
 - Sample entropy
 - Higuchi fractal dimension
 - Detrended fluctuation analysis
@@ -187,7 +190,7 @@ kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 for fold, (train_idx, test_idx) in enumerate(kf.split(file_keys), start=1):
     train_files = [file_keys[i] for i in train_idx]
     test_files = [file_keys[i] for i in test_idx]
-    
+  
     # Process and train on this fold
     # ...
 ```
@@ -225,11 +228,11 @@ def extract_my_new_feature(signal):
 def extract_signal_features(win, signal_name, fs):
     features = {}
     # ... existing code ...
-    
+  
     # Add your new feature
     my_features = extract_my_new_feature(signal)
     features.update({f"{signal_name}_{k}": v for k, v in my_features.items()})
-    
+  
     return features
 ```
 
