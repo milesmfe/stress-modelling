@@ -16,5 +16,6 @@ def parse_args():
     parser.add_argument("--save_datasets", action="store_true", help="Save train/test datasets per fold.")
     parser.add_argument("--model_name", type=str, default="RandomForest", help="Model name in registry.")
     parser.add_argument("--feature_selection", action="store_true", help="Enable feature selection.")
+    parser.add_argument("--binary_classification", action="store_true", help="Use binary classification.")
     parser.add_argument("--imputer", type=str, default="mean", help="Imputation strategy: mean, median, most_frequent.")
     return parser.parse_args()

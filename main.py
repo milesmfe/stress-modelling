@@ -43,7 +43,8 @@ def main():
         results_dir=args.results_dir,
         save_datasets=args.save_datasets,
         model_name=args.model_name,
-        use_feature_selection=args.feature_selection
+        use_feature_selection=args.feature_selection,
+        binary_classification=args.binary_classification
     )
     logger.info("Cross-validation completed.")
 
