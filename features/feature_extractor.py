@@ -83,12 +83,28 @@ def extract_hrv(signal, fs):
         "pnn50": 100 * np.sum(np.abs(diff_rr) > 0.05) / len(diff_rr)
     }
 
+def remove_outliers_iqr(signal: np.ndarray) -> np.ndarray:
+    """Remove outliers from a 1D signal using IQR."""
+    Q1 = np.percentile(signal, 25)
+    Q3 = np.percentile(signal, 75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    filtered = signal[(signal >= lower_bound) & (signal <= upper_bound)]
+    
+    # Ensure minimum viable length for feature extraction
+    if len(filtered) < 10:  # safeguard for very short segments
+        return signal
+    return filtered
+
 def extract_signal_features(win: np.ndarray, signal_name: str, fs: int) -> dict:
     win = win if win.ndim > 1 else win.reshape(-1, 1)
     features = {}
 
     def extract_dim(dim_idx):
         sig = win[:, dim_idx]
+        sig = remove_outliers_iqr(sig)  # Remove outliers
+
         feats = {}
         feats.update(extract_basic_stats(sig))
         freq_feats = extract_freq_features(sig, fs)
