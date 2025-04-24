@@ -7,3 +7,5 @@ seaborn
 sktime
 xgboost
 antropy
+aeon
+torch
