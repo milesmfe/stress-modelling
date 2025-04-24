@@ -10,4 +10,6 @@ def select_features(X_train, y_train, X_test, threshold=0.01):
     model.fit(X_train, y_train)
     importance = model.feature_importances_
     mask = importance >= threshold
+    print(f"Selected features: {np.sum(mask)} out of {len(mask)}")
+    print(f"Feature importances: {importance[mask]}")
     return X_train[:, mask], X_test[:, mask]
