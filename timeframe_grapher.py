@@ -22,7 +22,7 @@ LABEL_MAP = {
 class TimeframeGrapherApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("🧠 Timeframe Grapher")
+        self.root.title("Timeframe Grapher")
         self.root.geometry("900x600")
         self.root.resizable(True, True)
         self.root.protocol("WM_DELETE_WINDOW", self.root.quit)
@@ -46,10 +46,10 @@ class TimeframeGrapherApp:
         control_frame = tk.Frame(self.main_frame)
         control_frame.pack(anchor='w', fill='x', pady=(0, 10))
 
-        self.load_button = ttk.Button(control_frame, text="📂 Load .pkl", command=self.load_file)
+        self.load_button = ttk.Button(control_frame, text="Load .pkl", command=self.load_file)
         self.load_button.pack(side='left', padx=(0, 10))
 
-        self.unload_button = ttk.Button(control_frame, text="❌ Unload", command=self.unload_file, state='disabled')
+        self.unload_button = ttk.Button(control_frame, text="Unload", command=self.unload_file, state='disabled')
         self.unload_button.pack(side='left', padx=(0, 10))
 
         self.dropdown_frame = tk.Frame(control_frame)
@@ -64,10 +64,10 @@ class TimeframeGrapherApp:
         self.overlay_check = ttk.Checkbutton(control_frame, text="Overlay Labels", variable=self.overlay_var)
         self.overlay_check.pack(side='left', padx=(20, 0))
 
-        self.plot_button = ttk.Button(control_frame, text="📈 Plot Selected Features", command=self.plot_features, state='disabled')
+        self.plot_button = ttk.Button(control_frame, text="Plot Selected Features", command=self.plot_features, state='disabled')
         self.plot_button.pack(side='right', padx=(0, 10))
 
-        self.export_button = ttk.Button(control_frame, text="📤 Export to CSV", command=self.export_csv, state='disabled')
+        self.export_button = ttk.Button(control_frame, text="Export to CSV", command=self.export_csv, state='disabled')
         self.export_button.pack(side='right', padx=(0, 10))
 
     def _build_feature_listbox(self):
@@ -90,7 +90,7 @@ class TimeframeGrapherApp:
 
     def _try_load_file(self, file_path):
         try:
-            self.status_label.config(text="🔄 Loading...")
+            self.status_label.config(text="Loading...")
             with open(file_path, 'rb') as f:
                 self.data_dict = pickle.load(f)
 
@@ -104,13 +104,13 @@ class TimeframeGrapherApp:
         self.data_dict = {}
         self.subject_selector.set('')
         self.dropdown_frame.pack_forget()
-        self.status_label.config(text="❌ Load failed")
+        self.status_label.config(text="Load failed")
 
     def populate_subject_selector(self, subjects):
         self.subject_selector['values'] = subjects
         self.subject_selector.set("Select Subject")
         self.dropdown_frame.pack(side='left', padx=(10, 10))
-        self.status_label.config(text="✅ File Loaded — Select a Subject")
+        self.status_label.config(text="File Loaded — Select a Subject")
 
     def on_subject_selected(self, event=None):
         subject = self.subject_selector.get()
@@ -127,13 +127,13 @@ class TimeframeGrapherApp:
         for col in X.columns:
             self.feature_listbox.insert(tk.END, col)
 
-        self.status_label.config(text=f"✅ Ready — Subject: {subject}")
+        self.status_label.config(text=f"Ready — Subject: {subject}")
         self.plot_button.config(state='normal')
         self.export_button.config(state='normal')
 
     def unload_file(self):
         self._reset_state()
-        self.status_label.config(text="🗃️ No file loaded")
+        self.status_label.config(text="No file loaded")
 
     def _reset_state(self):
         self.data_dict = {}
