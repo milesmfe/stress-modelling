@@ -36,6 +36,8 @@ def run_cross_validation(data, n_splits, results_dir, save_datasets, model_name,
         X_test = pd.concat([data[f][0] for f in test_files]).reset_index(drop=True)
         y_test = pd.concat([data[f][1] for f in test_files]).reset_index(drop=True)
 
+        X_train_columns = X_train.columns
+
         if binary_classification:
             logger.info("Converting labels to binary classification...")
             y_train = y_train.apply(lambda x: 1 if x == 2 else 0)
@@ -62,7 +64,7 @@ def run_cross_validation(data, n_splits, results_dir, save_datasets, model_name,
 
         if use_feature_selection:
             logger.info("Performing feature selection...")
-            X_train, X_test = select_features(X_train, y_train, X_test)
+            X_train, X_test = select_features(X_train, y_train, X_test, X_train_columns)
 
         logger.info(f"Initializing model: {model_name}")
         clf = get_model(model_name)
