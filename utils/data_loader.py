@@ -113,7 +113,7 @@ def load_subject_timeframe(filepath: str, drop_non_study: bool, imputer_strategy
 
     if shorten_non_study:
         logger.info("Shortening non-study labels to 0")
-        y = y.replace({1: 0, 2: 0, 3: 0, 4: 0})
+        y = y.replace({5: 0, 6: 0, 7: 0})
         y = y.astype(int)
 
     logger.info(f"Imputing missing values using strategy: {imputer_strategy}")
